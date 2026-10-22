@@ -1,0 +1,14 @@
+import mysql from 'mysql2/promise';
+import {randomBytes} from 'node:crypto';
+import {writeFile} from 'node:fs/promises';
+const password=randomBytes(24).toString('hex');
+const admin=await mysql.createConnection({host:'127.0.0.1',port:3307,user:'root'});
+await admin.query('CREATE DATABASE IF NOT EXISTS study_garden CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+await admin.query("CREATE USER IF NOT EXISTS 'study'@'127.0.0.1' IDENTIFIED BY ?",[password]);
+await admin.query("GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, REFERENCES ON study_garden.* TO 'study'@'127.0.0.1'");
+const adminPassword=randomBytes(32).toString('hex');
+await admin.query("ALTER USER 'root'@'localhost' IDENTIFIED BY ?",[adminPassword]);
+await admin.end();
+await writeFile(new URL('../.env',import.meta.url),`DB_HOST=127.0.0.1\nDB_PORT=3307\nDB_USER=study\nDB_PASSWORD=${password}\nDB_NAME=study_garden\nPORT=3000\n`);
+await writeFile(new URL('../.runtime/admin.env',import.meta.url),`MYSQL_ROOT_PASSWORD=${adminPassword}\n`);
+console.log('MySQL 数据库与专用应用账号已创建，随机密码已保存至本地 .env。');
