@@ -21,4 +21,10 @@ if (-not $appRunning) {
     $appProc = Start-Process -FilePath $nodeExe -ArgumentList 'server/index.js' -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtime 'app.log') -RedirectStandardError (Join-Path $runtime 'app-error.log')
     $appProc.Id | Set-Content (Join-Path $runtime 'app.pid')
 }
+$ready = $false
+for($attempt=0;$attempt -lt 25;$attempt++) {
+    try { $health = Invoke-RestMethod 'http://127.0.0.1:3000/api/health' -TimeoutSec 2; if($health.ok){$ready=$true;break} } catch {}
+    Start-Sleep -Milliseconds 500
+}
+if(-not $ready){throw '启动未就绪，请查看 .runtime/app-error.log'}
 Write-Host '拾知已启动：http://127.0.0.1:3000'

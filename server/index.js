@@ -5,6 +5,7 @@ import mysql from 'mysql2/promise';
 import {fileURLToPath} from 'node:url';
 import {existsSync} from 'node:fs';
 import {concepts,outline,grade} from './content.js';
+import {registerWorkspace} from './workspace.js';
 const app=Fastify({logger:true,bodyLimit:1024*1024});
 const db=await mysql.createPool({host:process.env.DB_HOST||'127.0.0.1',port:Number(process.env.DB_PORT||3307),user:process.env.DB_USER||'study',password:process.env.DB_PASSWORD,database:process.env.DB_NAME||'study_garden',charset:'utf8mb4',dateStrings:true,connectionLimit:5});
 await db.query(`CREATE TABLE IF NOT EXISTS entries (id INT AUTO_INCREMENT PRIMARY KEY,title VARCHAR(160) NOT NULL,day DATE NOT NULL,category VARCHAR(50) NOT NULL,content MEDIUMTEXT NOT NULL,published BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
@@ -17,6 +18,7 @@ app.put('/api/entries/:id',{schema:{body:entrySchema}},async(req,reply)=>{const 
 app.delete('/api/entries/:id',async(req)=>{await db.execute('DELETE FROM entries WHERE id=?',[req.params.id]);return {ok:true};});
 app.post('/api/entries/:id/reviews',{schema:{body:{type:'object',required:['mode','answer'],properties:{mode:{enum:['cloze','recall']},answer:{type:'string',maxLength:50000}}}}},async(req,reply)=>{const [rows]=await db.execute('SELECT * FROM entries WHERE id=?',[req.params.id]);if(!rows.length)return reply.code(404).send({message:'笔记不存在'});const keys=concepts(rows[0].content),answer=req.body.answer;let feedback;try{feedback=grade(keys,req.body.mode,answer);}catch(e){return reply.code(400).send({message:e.message});}const score=feedback.score;await db.execute('INSERT INTO reviews(entry_id,mode,answer,score) VALUES(?,?,?,?)',[req.params.id,req.body.mode,answer,score]);return feedback;});
 app.get('/api/reviews',async()=>{const [rows]=await db.query('SELECT r.*,e.title FROM reviews r JOIN entries e ON e.id=r.entry_id ORDER BY r.id DESC LIMIT 100');return rows;});
+await registerWorkspace(app,db);
 const dist=fileURLToPath(new URL('../dist/',import.meta.url));
 if(existsSync(dist)){await app.register(staticPlugin,{root:dist});app.setNotFoundHandler((req,reply)=>req.url.startsWith('/api/')?reply.code(404).send({message:'接口不存在'}):reply.sendFile('index.html'));}
 app.addHook('onClose',()=>db.end());
