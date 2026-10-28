@@ -15,13 +15,27 @@ Vue 3 + Vite 前端，Fastify API，MySQL 8.4 数据库。生产环境由一个 
 
 ## 本地使用
 
-部署完成后打开 http://127.0.0.1:3000 。
+打开项目文件夹 `D:\Study\selfStudyEfficient`，按需要双击：
 
-Windows 启动：`powershell -ExecutionPolicy Bypass -File scripts/start.ps1`
+| 文件 | 用途 |
+| --- | --- |
+| `启动拾知.cmd` | 启动数据库和网页服务，准备好后打开浏览器。 |
+| `检查运行状态.cmd` | 只检查运行状态，窗口保留，方便查看失败原因。 |
+| `停止拾知.cmd` | 停止本项目的网页服务和数据库。 |
 
-停止：`powershell -ExecutionPolicy Bypass -File scripts/stop.ps1`
+访问地址：[http://127.0.0.1:3000/](http://127.0.0.1:3000/)。地址末尾不要附加“该项目无法打开”等文字。
 
-MySQL 便携程序位于 `.runtime/mysql-8.4.11-winx64`，数据目录 `.runtime/data`，端口 3307。数据库仅监听 127.0.0.1。应用账号和随机密码保存在 `.env`，请勿公开。启动不需要管理员权限，也不注册 Windows 服务。
+**每次开机后先双击“启动拾知”。** 当前部署没有注册 Windows 服务，也没有设置开机自启。关闭浏览器不会停止后台服务；不用时可以双击“停止拾知”。通常不需要管理员权限。
+
+也可以在 PowerShell 中运行，绝对路径不要求先切换目录：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\Study\selfStudyEfficient\scripts\start.ps1"
+```
+
+网页打不开时，先运行“检查运行状态”，再按[本地启动与故障排查](docs/troubleshooting.md)处理。`npm start` 只启动 API/网页服务，**不会启动 MySQL**；日常使用请优先用上面的完整启动入口。
+
+MySQL 便携程序位于 `.runtime/mysql-8.4.11-winx64`，数据目录 `.runtime/data`，端口 3307。数据库仅监听 127.0.0.1。应用账号和随机密码保存在 `.env`，请勿上传或公开 `.env`、`.runtime/admin.env` 和 `.runtime/data`。不要通过删除 `.runtime` 或重新运行 `setup-db.mjs` 排查日常启动问题。
 
 ## 学习流程
 
