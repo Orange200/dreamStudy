@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { isAuthorized } from './auth.js';
 import Fastify from 'fastify';
 import staticPlugin from '@fastify/static';
 import mysql from 'mysql2/promise';
@@ -6,8 +7,14 @@ import {fileURLToPath} from 'node:url';
 import {existsSync} from 'node:fs';
 import {concepts,outline,grade} from './content.js';
 import {registerWorkspace} from './workspace.js';
-const app=Fastify({logger:true,bodyLimit:1024*1024});
-const db=await mysql.createPool({host:process.env.DB_HOST||'127.0.0.1',port:Number(process.env.DB_PORT||3307),user:process.env.DB_USER||'study',password:process.env.DB_PASSWORD,database:process.env.DB_NAME||'study_garden',charset:'utf8mb4',dateStrings:true,connectionLimit:5});
+const app=Fastify({logger:{redact:['req.headers.authorization']},bodyLimit:1024*1024});
+if (!process.env.AUTH_USER || !process.env.AUTH_PASSWORD || !process.env.DB_HOST || !process.env.DB_PASSWORD || !process.env.DB_CA) throw new Error('Cloud credentials and database CA certificate are required');
+app.addHook('onRequest', async (req, reply) => {
+ if (req.method === 'GET' && req.url === '/healthz') return;
+ if (!isAuthorized(req.headers.authorization, process.env.AUTH_USER, process.env.AUTH_PASSWORD)) return reply.header('WWW-Authenticate', 'Basic realm="Study Garden", charset="UTF-8"').code(401).send('Authentication required');
+});
+app.get('/healthz', async () => ({ok:true}));
+const db=await mysql.createPool({ssl:{rejectUnauthorized:true,ca:process.env.DB_CA.replace(/\\n/g,'\n')},host:process.env.DB_HOST,port:Number(process.env.DB_PORT||3306),user:process.env.DB_USER||'avnadmin',password:process.env.DB_PASSWORD,database:process.env.DB_NAME||'defaultdb',charset:'utf8mb4',dateStrings:true,connectionLimit:5});
 await db.query(`CREATE TABLE IF NOT EXISTS entries (id INT AUTO_INCREMENT PRIMARY KEY,title VARCHAR(160) NOT NULL,day DATE NOT NULL,category VARCHAR(50) NOT NULL,content MEDIUMTEXT NOT NULL,published BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 await db.query(`CREATE TABLE IF NOT EXISTS reviews (id INT AUTO_INCREMENT PRIMARY KEY,entry_id INT NOT NULL,mode VARCHAR(20) NOT NULL,answer MEDIUMTEXT NOT NULL,score INT NOT NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(entry_id) REFERENCES entries(id) ON DELETE CASCADE)`);
 const entrySchema={type:'object',required:['title','day','category','content'],additionalProperties:false,properties:{title:{type:'string',minLength:1,maxLength:160},day:{type:'string',pattern:'^\\d{4}-\\d{2}-\\d{2}$'},category:{type:'string',minLength:1,maxLength:50},content:{type:'string',minLength:1,maxLength:50000},published:{type:'boolean'}}};
@@ -22,5 +29,4 @@ await registerWorkspace(app,db);
 const dist=fileURLToPath(new URL('../dist/',import.meta.url));
 if(existsSync(dist)){await app.register(staticPlugin,{root:dist});app.setNotFoundHandler((req,reply)=>req.url.startsWith('/api/')?reply.code(404).send({message:'接口不存在'}):reply.sendFile('index.html'));}
 app.addHook('onClose',()=>db.end());
-await app.listen({port:Number(process.env.PORT||3000),host:'127.0.0.1'});
-
+await app.listen({port:Number(process.env.PORT||3000),host:'0.0.0.0'});
