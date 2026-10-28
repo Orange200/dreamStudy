@@ -38,11 +38,11 @@ onUnmounted(()=>cleanupEffects?.());
 <template>
 <div class="shell">
  <aside class="sidebar">
-  <a class="brand" href="#" @click.prevent="page='dashboard'"><span class="brand-icon"><Sprout :size="26"/></span>拾知<span class="brand-dot">.</span></a>
+  <a class="brand" href="#" @click.prevent="page='dashboard'"><span class="brand-icon"><img src="/shizhi-logo.svg" alt="" width="41" height="41"/></span>拾知<span class="brand-dot">.</span></a>
   <div class="workspace">PERSONAL LEARNING SPACE</div>
   <nav><button v-for="item in [['dashboard','学习概览',LayoutDashboard],['notes','我的笔记',BookOpen],['review','每日复习',Brain],['blog','知识博客',Network],['todos','待办清单',ListTodo]]" :class="{active:page===item[0]}" @click="page=item[0];search='';category='全部'"><component :is="item[2]" :size="19"/>{{item[1]}}<span v-if="item[0]==='review'&&due.length" class="badge">{{due.length}}</span></button></nav>
   <div class="sidebar-note"><Sprout :size="24"/><p>知识需要沉淀，<br>成长自有回声。</p><span>MAKE LEARNING STICK.</span></div>
-  <div class="profile"><div class="avatar">知</div><div><b>我的学习空间</b><small>每天进步一点点</small></div><span class="online"></span></div>
+  <div class="profile"><div class="avatar"><img src="/shizhi-logo.svg" alt="拾知头像" width="36" height="36"/></div><div><b>我的学习空间</b><small>每天进步一点点</small></div><span class="online"></span></div>
  </aside>
  <main>
   <header><div class="breadcrumb">我的空间 <span>/</span> {{ {dashboard:'学习概览',notes:'我的笔记',review:'每日复习',blog:'知识博客',article:'笔记详情',practice:'专注复习',todos:'待办清单'}[page] }}</div><div class="header-right"><span class="local-dot"></span> 本地个人空间 <span class="header-line"></span><CalendarDays :size="16"/>{{new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'})}}</div></header>

@@ -1,0 +1,12 @@
+{
+  "name": "拾知 · 个人学习空间",
+  "short_name": "拾知",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8f4",
+  "theme_color": "#2b6048",
+  "icons": [
+    { "src": "/shizhi-logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

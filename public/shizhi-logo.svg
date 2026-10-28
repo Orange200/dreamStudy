@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">拾知</title>
+  <desc id="desc">森林绿底色上，展开的书页托起一株新芽，象征知识积累与成长。</desc>
+  <rect width="128" height="128" rx="30" fill="#2B6048"/>
+  <path d="M25 66C39 63 50 67 60 76V104C49 94 38 91 25 93V66Z" fill="#F6F4E6"/>
+  <path d="M103 66C89 63 78 67 68 76V104C79 94 90 91 103 93V66Z" fill="#F6F4E6"/>
+  <path d="M64 71V48" stroke="#C3D8A3" stroke-width="6" stroke-linecap="round"/>
+  <path d="M62 49C44 49 37 39 38 25C54 25 64 32 62 49Z" fill="#A7C98C"/>
+  <path d="M65 55C65 37 76 28 92 29C92 45 83 56 65 55Z" fill="#D6E3B5"/>
+</svg>
