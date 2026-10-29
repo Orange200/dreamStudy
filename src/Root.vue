@@ -4,15 +4,15 @@ import App from './App.vue';
 import {ArrowRight,BookOpen,LockKeyhole,Sprout} from 'lucide-vue-next';
 import './welcome.css';
 const route=ref(location.pathname),username=ref(''),password=ref(''),error=ref(''),busy=ref(false),checking=ref(location.pathname==='/app');
-function go(path){history.pushState({},'',path);route.value=path;if(path==='/app')check();}
-window.addEventListener('popstate',()=>{route.value=location.pathname;if(route.value==='/app')check();});
+function go(path,replace=false){history[replace?'replaceState':'pushState']({},'',path);route.value=path;if(path==='/app')check();}
+window.addEventListener('popstate',()=>{const next=location.pathname,enteringApp=next==='/app'&&route.value!=='/app';route.value=next;if(enteringApp)check();});
 async function check(){checking.value=true;try{const res=await fetch('/api/session');if(!res.ok){history.replaceState({},'','/login');route.value='/login';}}catch{error.value='连接失败，请稍后重试';}finally{checking.value=false;}}
-async function login(){busy.value=true;error.value='';try{const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value,password:password.value})});const data=await res.json();if(!res.ok)throw new Error(data.message||'登录失败');password.value='';go('/app');}catch(e){error.value=e.message;}finally{busy.value=false;}}
+async function login(){busy.value=true;error.value='';try{const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value,password:password.value})});const data=await res.json();if(!res.ok)throw new Error(data.message||'登录失败');password.value='';go('/app',true);}catch(e){error.value=e.message;}finally{busy.value=false;}}
 onMounted(()=>{if(route.value==='/app')check();});
 </script>
 <template>
- <App v-if="route==='/demo'" :demo="true"/>
- <App v-else-if="route==='/app'&&!checking" />
+ <App v-if="route==='/demo'" key="demo" :demo="true"/>
+ <App v-else-if="route==='/app'&&!checking" key="private" :demo="false" />
  <div v-else class="welcome">
   <header class="welcome-head"><a href="/" class="welcome-brand" @click.prevent="go('/')"><img src="/shizhi-logo.svg" alt="" />拾知<span>.</span></a><a v-if="route==='/login'" href="/" @click.prevent="go('/')">返回首页</a><a v-else href="/login" @click.prevent="go('/login')">个人空间 <ArrowRight :size="16"/></a></header>
   <main v-if="route==='/login'" class="welcome-login">
