@@ -1,8 +1,10 @@
-export async function registerWorkspace(app,db){
+export async function prepareWorkspace(db){
  await db.query(`CREATE TABLE IF NOT EXISTS folders (path VARCHAR(50) PRIMARY KEY,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
  await db.query(`CREATE TABLE IF NOT EXISTS todos (id INT AUTO_INCREMENT PRIMARY KEY,title VARCHAR(300) NOT NULL,done BOOLEAN NOT NULL DEFAULT FALSE,priority VARCHAR(10) NOT NULL DEFAULT 'normal',due DATE NULL,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
  const [existing]=await db.query('SELECT DISTINCT category FROM entries');
  for(const row of existing){const parts=row.category.split('/');for(let i=1;i<=parts.length;i++)await db.execute('INSERT IGNORE INTO folders(path) VALUES(?)',[parts.slice(0,i).join('/')]);}
+}
+export function registerWorkspace(app,db){
  const nameSchema={type:'string',minLength:1,maxLength:50,pattern:'^[^/\\\\]+$'};
  app.get('/api/folders',async()=>{const [rows]=await db.query('SELECT path FROM folders ORDER BY path');return rows;});
  app.post('/api/folders',{schema:{body:{type:'object',required:['name'],additionalProperties:false,properties:{name:nameSchema,parent:{type:'string',maxLength:50}}}}},async(req,reply)=>{
