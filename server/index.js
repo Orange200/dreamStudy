@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { isAuthorized } from './auth.js';
+import { isAuthorized, createSession, validSession } from './auth.js';
 import Fastify from 'fastify';
 import staticPlugin from '@fastify/static';
 import mysql from 'mysql2/promise';
@@ -9,10 +9,26 @@ import {concepts,outline,grade} from './content.js';
 import {registerWorkspace} from './workspace.js';
 const app=Fastify({logger:{redact:['req.headers.authorization']},bodyLimit:1024*1024});
 if (!process.env.AUTH_USER || !process.env.AUTH_PASSWORD || !process.env.DB_HOST || !process.env.DB_PASSWORD || !process.env.DB_CA) throw new Error('Cloud credentials and database CA certificate are required');
+const secret=process.env.AUTH_PASSWORD+'\0'+process.env.AUTH_USER;
+const attempts=new Map();
 app.addHook('onRequest', async (req, reply) => {
- if (req.method === 'GET' && req.url === '/healthz') return;
- if (!isAuthorized(req.headers.authorization, process.env.AUTH_USER, process.env.AUTH_PASSWORD)) return reply.header('WWW-Authenticate', 'Basic realm="Study Garden", charset="UTF-8"').code(401).send('Authentication required');
+ if (!req.url.startsWith('/api/')) return;
+ if (!['GET','HEAD'].includes(req.method) && req.headers['sec-fetch-site']==='cross-site') return reply.code(403).send({message:'请求来源不允许'});
+ if (req.url === '/api/login' && req.method==='POST') return;
+ const token=(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('study_session='))?.slice(14);
+ if (!validSession(token, secret)) return reply.code(401).send({message:'请先登录'});
 });
+app.post('/api/login', async (req,reply)=>{
+ const ip=req.ip, now=Date.now(), recent=(attempts.get(ip)||[]).filter(t=>now-t<15*60*1000);
+ if(recent.length>=10) return reply.code(429).send({message:'尝试次数过多，请稍后再试'});
+ const {username,password}=req.body||{};
+ if(typeof username!=='string'||typeof password!=='string'||!isAuthorized('Basic '+Buffer.from(username+':'+password).toString('base64'),process.env.AUTH_USER,process.env.AUTH_PASSWORD)){
+  recent.push(now);attempts.set(ip,recent);return reply.code(401).send({message:'用户名或密码不正确'});
+ }
+ attempts.delete(ip);reply.header('Set-Cookie','study_session='+createSession(secret)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800');return {ok:true};
+});
+app.get('/api/session',async()=>({ok:true}));
+app.post('/api/logout',async(_req,reply)=>{reply.header('Set-Cookie','study_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');return {ok:true};});
 app.get('/healthz', async () => ({ok:true}));
 const db=await mysql.createPool({ssl:{rejectUnauthorized:true,ca:process.env.DB_CA.replace(/\\n/g,'\n')},host:process.env.DB_HOST,port:Number(process.env.DB_PORT||3306),user:process.env.DB_USER||'avnadmin',password:process.env.DB_PASSWORD,database:process.env.DB_NAME||'defaultdb',charset:'utf8mb4',dateStrings:true,connectionLimit:5});
 await db.query(`CREATE TABLE IF NOT EXISTS entries (id INT AUTO_INCREMENT PRIMARY KEY,title VARCHAR(160) NOT NULL,day DATE NOT NULL,category VARCHAR(50) NOT NULL,content MEDIUMTEXT NOT NULL,published BOOLEAN NOT NULL DEFAULT FALSE,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);

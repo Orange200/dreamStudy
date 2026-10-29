@@ -4,6 +4,10 @@ import NoteEditor from './NoteEditor.vue';
 import FolderManager from './FolderManager.vue';
 import TodoBoard from './TodoBoard.vue';
 import {installEffects} from './effects.js';
+import {createDemoApi} from './demo-api.js';
+const props=defineProps({demo:{type:Boolean,default:false}});
+const demoApi=props.demo?createDemoApi():null;
+async function logout(){await fetch('/api/logout',{method:'POST'});location.assign('/');}
 import {BookOpen, Sprout, LayoutDashboard, Network, Plus, ArrowUpRight, ArrowRight, X, Search, ChevronLeft, Check, Pencil, Trash2, Download, RotateCcw, CalendarDays, Flame, Brain, FileText,Folder,FolderPlus,ListTodo,Settings2} from 'lucide-vue-next';
 const entries=ref([]),reviews=ref([]),page=ref('dashboard'),search=ref(''),category=ref('全部'),selected=ref(null),editing=ref(false),editId=ref(null),busy=ref(false),error=ref(''),toast=ref(''),mode=ref('cloze'),answers=ref([]),recall=ref(''),result=ref(null);
 const today=()=>new Date().toLocaleDateString('sv-SE');
@@ -17,7 +21,7 @@ const due=computed(()=>entries.value.filter(e=>!e.last_review||Date.now()-new Da
 const totalKeys=computed(()=>entries.value.reduce((a,e)=>a+e.concepts.length,0));
 const pieces=computed(()=>selected.value?.content.split(/\[\[([^\[\]\n]+)\]\]/g)||[]);
 const days=computed(()=>Array.from({length:28},(_,i)=>{const d=new Date();d.setDate(d.getDate()-27+i);const day=d.toLocaleDateString('sv-SE');return {day,n:entries.value.filter(e=>e.day===day).length};}));
-async function api(path,options){const r=await fetch('/api'+path,{...options,headers:options?.body?{'Content-Type':'application/json'}:{}});const data=await r.json();if(!r.ok)throw new Error(data.message||'操作失败');return data;}
+async function api(path,options){if(demoApi)return demoApi(path,options);const r=await fetch('/api'+path,{...options,headers:options?.body?{'Content-Type':'application/json'}:{}});const data=await r.json();if(r.status===401){window.location.assign('/login');throw new Error('请先登录');}if(!r.ok)throw new Error(data.message||'操作失败');return data;}
 async function load(){try{[entries.value,reviews.value,folders.value]=await Promise.all([api('/entries'),api('/reviews'),api('/folders')]);error.value='';}catch(e){error.value='服务连接失败：'+e.message;}}
 async function foldersChanged(change){await load();noteEditor.value?.selectFolder(change);if(category.value!=='全部'&&!folders.value.some(f=>f.path===category.value))category.value='全部';if(selected.value)selected.value=entries.value.find(e=>e.id===selected.value.id);notify('文件夹已更新');}
 function notify(s){toast.value=s;setTimeout(()=>toast.value='',3000);}
@@ -45,7 +49,7 @@ onUnmounted(()=>cleanupEffects?.());
   <div class="profile"><div class="avatar"><img src="/shizhi-logo.svg" alt="拾知头像" width="36" height="36"/></div><div><b>我的学习空间</b><small>每天进步一点点</small></div><span class="online"></span></div>
  </aside>
  <main>
-  <header><div class="breadcrumb">我的空间 <span>/</span> {{ {dashboard:'学习概览',notes:'我的笔记',review:'每日复习',blog:'知识博客',article:'笔记详情',practice:'专注复习',todos:'待办清单'}[page] }}</div><div class="header-right"><span class="local-dot"></span> 本地个人空间 <span class="header-line"></span><CalendarDays :size="16"/>{{new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'})}}</div></header>
+  <header><div class="breadcrumb">{{demo?'演示空间':'我的空间'}} <span>/</span> {{ {dashboard:'学习概览',notes:'我的笔记',review:'每日复习',blog:'知识博客',article:'笔记详情',practice:'专注复习',todos:'待办清单'}[page] }}</div><div class="header-right"><span class="local-dot"></span> {{demo?'演示模式 · 刷新后重置':'个人空间'}} <a href="/" style="margin-left:12px">返回首页</a> <button v-if="!demo" class="text-button" @click="logout">退出登录</button> <span class="header-line"></span><CalendarDays :size="16"/>{{new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'})}}</div></header>
   <div class="content">
    <div v-if="error" class="error">{{error}} <button @click="load">重试</button></div>
    <template v-if="page==='dashboard'">
@@ -75,7 +79,7 @@ onUnmounted(()=>cleanupEffects?.());
    <footer>拾知 · 让学习发生，也让成长可见 <span>BUILT FOR YOUR CURIOUS MIND</span></footer>
   </div>
  </main>
- <NoteEditor v-if="editing" ref="noteEditor" :initial="form" :edit-id="editId" :folders="folders" :busy="busy" @close="editing=false" @save="save" @folders="manageFolders=true"/>
+ <NoteEditor v-if="editing" ref="noteEditor" :demo="demo" :initial="form" :edit-id="editId" :folders="folders" :busy="busy" @close="editing=false" @save="save" @folders="manageFolders=true"/>
  <FolderManager v-if="manageFolders" :folders="folders" :api="api" @close="manageFolders=false" @changed="foldersChanged"/> <div v-if="toast" class="toast">{{toast}}</div>
 </div>
 </template>
